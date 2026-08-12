@@ -1,15 +1,26 @@
 import fs from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { chromium } from 'playwright';
 
+const execFileAsync = promisify(execFile);
 const sources = JSON.parse(await fs.readFile('retail-sources.json', 'utf8'));
 const results = [];
 
 function extractPrice(text, productId) {
-  const compact = String(text || '').replace(/\s+/g, ' ');
+  const raw = String(text || '');
+  for (const re of [/"price"\s*:\s*"?([0-9]+(?:\.[0-9]{2})?)/i,/"salePrice"\s*:\s*"?([0-9]+(?:\.[0-9]{2})?)/i,/"currentPrice"\s*:\s*"?([0-9]+(?:\.[0-9]{2})?)/i]) {
+    const m = raw.match(re);
+    if (m) {
+      const n = Number(m[1]);
+      if (Number.isFinite(n) && n >= 5 && n < 10000) return n;
+    }
+  }
+  const compact = raw.replace(/\s+/g, ' ');
   const windows = [];
   const idx = productId ? compact.indexOf(productId) : -1;
-  if (idx >= 0) windows.push(compact.slice(Math.max(0, idx - 700), idx + 1800));
-  windows.push(compact.slice(0, 50000));
+  if (idx >= 0) windows.push(compact.slice(Math.max(0, idx - 1000), idx + 2500));
+  windows.push(compact.slice(0, 70000));
   for (const block of windows) {
     const matches = [...block.matchAll(/\$\s*([0-9]{1,4}(?:,[0-9]{3})*(?:\.\d{2})?)/g)]
       .map(m => Number(m[1].replace(/,/g, '')))
@@ -19,8 +30,17 @@ function extractPrice(text, productId) {
   return null;
 }
 
+async function curlHttp11(url) {
+  try {
+    const { stdout } = await execFileAsync('curl', ['--http1.1','-L','--compressed','--max-time','25','-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',url], { maxBuffer: 12 * 1024 * 1024 });
+    return stdout;
+  } catch (_) {
+    return '';
+  }
+}
+
 async function readBody(page) {
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(2000);
   return page.locator('body').innerText({ timeout: 10000 });
 }
 
@@ -32,17 +52,26 @@ const context = await browser.newContext({
 
 for (const source of sources) {
   const checked_at = new Date().toISOString();
-  const row = { ...source, checked_at, price: null, status: 'unknown', method: 'browser' };
+  const row = { ...source, checked_at, price: null, status: 'unknown', method: 'unknown' };
+
+  const html = await curlHttp11(source.url);
+  if (html) {
+    row.price = extractPrice(html, source.product_id);
+    row.method = 'curl_http1_1';
+  }
+
   const page = await context.newPage();
   try {
-    try {
-      await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      const body = await readBody(page);
-      row.price = extractPrice(body, source.product_id);
-      row.method = 'retailer_browser';
-      row.final_url = page.url();
-    } catch (directError) {
-      row.direct_error = String(directError?.message || directError).slice(0, 220);
+    if (row.price == null) {
+      try {
+        await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        const body = await readBody(page);
+        row.price = extractPrice(body, source.product_id);
+        row.method = 'retailer_browser';
+        row.final_url = page.url();
+      } catch (directError) {
+        row.direct_error = String(directError?.message || directError).slice(0, 220);
+      }
     }
 
     if (row.price == null) {
@@ -55,7 +84,7 @@ for (const source of sources) {
       ];
       for (const candidate of queries) {
         try {
-          await page.goto(candidate.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+          await page.goto(candidate.url, { waitUntil: 'domcontentloaded', timeout: 15000 });
           const body = await readBody(page);
           const recovered = extractPrice(body, source.product_id);
           if (recovered != null) {
