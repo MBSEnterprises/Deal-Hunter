@@ -29,17 +29,26 @@
 
     <section id="appView" class="hidden">
       <div class="summary-grid">
-        <article class="summary-card"><span class="summary-label">Active searches</span><strong id="activeCount">0</strong></article>
-        <article class="summary-card"><span class="summary-label">Best buy-now target</span><strong id="bestBuyNow">—</strong></article>
-        <article class="summary-card"><span class="summary-label">Oldest search</span><strong id="oldestSearch">—</strong></article>
+        <article class="summary-card"><span class="summary-label">Watching now</span><strong id="activeCount">0</strong></article>
+        <article class="summary-card"><span class="summary-label">Paused</span><strong id="pausedCount">0</strong></article>
+        <article class="summary-card"><span class="summary-label">Purchased</span><strong id="purchasedCount">0</strong></article>
       </div>
 
       <div class="toolbar">
-        <div><h2>Your watchlist</h2><p class="muted">Items you're actively hunting for.</p></div>
+        <div><h2>Your Deal Hunter</h2><p class="muted">Watch, pause, finish, or archive without losing history.</p></div>
         <button id="addItemBtn" class="primary">+ Add item</button>
       </div>
+
+      <div id="statusFilters" class="price-row" style="margin-bottom:18px">
+        <button class="primary status-filter" data-status="watching">Watching</button>
+        <button class="ghost status-filter" data-status="paused">Paused</button>
+        <button class="ghost status-filter" data-status="purchased">Purchased</button>
+        <button class="ghost status-filter" data-status="stopped">Stopped</button>
+        <button class="ghost status-filter" data-status="archived">Archived</button>
+      </div>
+
       <div id="watchlist" class="watchlist"></div>
-      <p id="emptyState" class="empty hidden">No active items yet.</p>
+      <p id="emptyState" class="empty hidden">Nothing in this section yet.</p>
       <p id="appMessage" class="message"></p>
     </section>
   </main>
@@ -47,7 +56,7 @@
   <dialog id="itemDialog">
     <form id="itemForm" method="dialog" class="dialog-card">
       <div class="dialog-header">
-        <div><div class="eyebrow">WATCHLIST ITEM</div><h2 id="dialogTitle">Add item</h2></div>
+        <div><div class="eyebrow">DEAL HUNTER ITEM</div><h2 id="dialogTitle">Add item</h2></div>
         <button id="closeDialogBtn" type="button" class="icon-btn" aria-label="Close">×</button>
       </div>
       <input id="itemId" type="hidden" />
@@ -64,15 +73,15 @@
         <label>Maximum price<input id="maximumPrice" type="number" min="0" step="0.01" /></label>
         <label>Urgency<select id="urgency"><option value="can_wait">Can wait</option><option value="normal">Normal</option><option value="buy_soon">Buy soon</option><option value="buy_now">Buy now</option></select></label>
         <label>Local radius (miles)<input id="localRadius" type="number" min="0" step="1" value="300" /></label>
+        <label>Status<select id="status"><option value="watching">Watching</option><option value="paused">Paused</option><option value="purchased">Purchased</option><option value="stopped">Stopped</option><option value="archived">Archived</option></select></label>
         <label class="check-label"><input id="localPickupAllowed" type="checkbox" checked />Local pickup allowed</label>
         <label class="check-label"><input id="shippingAllowed" type="checkbox" checked />Shipping allowed</label>
         <label class="wide">Notes<textarea id="notes" rows="4"></textarea></label>
         <label>Search started<input id="searchStartedAt" type="date" /></label>
-        <label class="check-label"><input id="active" type="checkbox" checked />Active search</label>
       </div>
 
       <div class="dialog-actions">
-        <button id="deleteItemBtn" type="button" class="danger hidden">Delete</button><div class="spacer"></div>
+        <button id="archiveItemBtn" type="button" class="danger hidden">Archive item</button><div class="spacer"></div>
         <button id="cancelBtn" type="button" class="ghost">Cancel</button>
         <button type="submit" class="primary">Save item</button>
       </div>
