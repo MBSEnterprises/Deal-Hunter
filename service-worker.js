@@ -1,4 +1,4 @@
-const CACHE = "deal-hunter-v2";
+const CACHE = "deal-hunter-v3";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
