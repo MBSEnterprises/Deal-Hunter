@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Deal Hunter" />
   <meta name="description" content="Deal Hunter watchlist and price tracker" />
   <title>Deal Hunter</title>
   <link rel="manifest" href="./manifest.webmanifest" />
@@ -11,14 +14,14 @@
 </head>
 <body>
   <header class="topbar">
-    <div><div class="eyebrow">PERSONAL PRICE TRACKER</div><h1>Deal Hunter</h1></div>
+    <div><div class="eyebrow">PERSONAL DEAL HUNTER</div><h1>Deal Hunter</h1></div>
     <button id="signOutBtn" class="ghost hidden">Sign out</button>
   </header>
 
   <main class="shell">
     <section id="loginView" class="card auth-card">
       <h2>Sign in</h2>
-      <p class="muted">Use the Deal Hunter email and password you created in Supabase.</p>
+      <p class="muted">Use your Deal Hunter email and password.</p>
       <form id="loginForm" class="stack">
         <label>Email<input id="email" type="email" autocomplete="email" required /></label>
         <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
@@ -30,16 +33,16 @@
     <section id="appView" class="hidden">
       <div class="summary-grid">
         <article class="summary-card"><span class="summary-label">Watching now</span><strong id="activeCount">0</strong></article>
-        <article class="summary-card"><span class="summary-label">Paused</span><strong id="pausedCount">0</strong></article>
+        <article class="summary-card"><span class="summary-label">Deals found</span><strong id="dealCount">0</strong></article>
         <article class="summary-card"><span class="summary-label">Purchased</span><strong id="purchasedCount">0</strong></article>
       </div>
 
       <div class="toolbar">
-        <div><h2>Your Deal Hunter</h2><p class="muted">Watch, pause, finish, or archive without losing history.</p></div>
-        <button id="addItemBtn" class="primary">+ Add item</button>
+        <div><h2>Your Deal Hunter</h2><p class="muted">Search the market, wait when you can, and buy when the price is right.</p></div>
+        <div class="toolbar-actions"><button id="searchAllBtn" class="ghost">Search all</button><button id="addItemBtn" class="primary">+ Add item</button></div>
       </div>
 
-      <div id="statusFilters" class="price-row" style="margin-bottom:18px">
+      <div id="statusFilters" class="price-row filters" style="margin-bottom:18px">
         <button class="primary status-filter" data-status="watching">Watching</button>
         <button class="ghost status-filter" data-status="paused">Paused</button>
         <button class="ghost status-filter" data-status="purchased">Purchased</button>
@@ -50,8 +53,20 @@
       <div id="watchlist" class="watchlist"></div>
       <p id="emptyState" class="empty hidden">Nothing in this section yet.</p>
       <p id="appMessage" class="message"></p>
+      <div class="install-note"><strong>Phone tip:</strong> on iPhone, open this page in Safari, tap Share, then <em>Add to Home Screen</em>. Deal Hunter will launch like an app.</div>
     </section>
   </main>
+
+  <dialog id="dealsDialog">
+    <section class="dialog-card">
+      <div class="dialog-header">
+        <div><div class="eyebrow">SEARCH RESULTS</div><h2 id="dealsTitle">Deals</h2></div>
+        <button id="closeDealsBtn" type="button" class="icon-btn" aria-label="Close">×</button>
+      </div>
+      <p id="dealsMessage" class="message"></p>
+      <div id="dealsList" class="deals-list"></div>
+    </section>
+  </dialog>
 
   <dialog id="itemDialog">
     <form id="itemForm" method="dialog" class="dialog-card">
@@ -65,9 +80,11 @@
         <label class="wide">Item name<input id="itemName" required /></label>
         <label>Brand<input id="brand" /></label>
         <label>Model<input id="model" /></label>
-        <label class="wide">Search keywords<textarea id="searchKeywords" rows="3"></textarea></label>
+        <label class="wide">Search keywords<textarea id="searchKeywords" rows="3" placeholder="Optional: exact phrases or alternate names"></textarea></label>
         <label>Category<input id="category" /></label>
         <label>Condition<select id="conditionPreference"><option value="used">Used</option><option value="new">New</option><option value="either">Either</option></select></label>
+        <label>Hunt style<select id="huntType"><option value="best_price">Find best current price</option><option value="target_hunt">Wait for my price</option></select></label>
+        <label>Hoped-for price<input id="hopedForPrice" type="number" min="0" step="0.01" /></label>
         <label>Buy-now price<input id="buyNowPrice" type="number" min="0" step="0.01" /></label>
         <label>Target price<input id="targetPrice" type="number" min="0" step="0.01" /></label>
         <label>Maximum price<input id="maximumPrice" type="number" min="0" step="0.01" /></label>
@@ -76,6 +93,7 @@
         <label>Status<select id="status"><option value="watching">Watching</option><option value="paused">Paused</option><option value="purchased">Purchased</option><option value="stopped">Stopped</option><option value="archived">Archived</option></select></label>
         <label class="check-label"><input id="localPickupAllowed" type="checkbox" checked />Local pickup allowed</label>
         <label class="check-label"><input id="shippingAllowed" type="checkbox" checked />Shipping allowed</label>
+        <label class="wide">Fallback plan<textarea id="fallbackStrategy" rows="2" placeholder="Example: buy new, choose a cheaper substitute, or keep waiting"></textarea></label>
         <label class="wide">Notes<textarea id="notes" rows="4"></textarea></label>
         <label>Search started<input id="searchStartedAt" type="date" /></label>
       </div>
