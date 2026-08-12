@@ -1,9 +1,12 @@
 {
+  "id": "./",
   "name": "Deal Hunter",
   "short_name": "Deal Hunter",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#0b1020",
   "theme_color": "#111827",
-  "description": "Personal deal and price tracking app"
+  "description": "Search, track, and act on deals from your personal watchlist"
 }
