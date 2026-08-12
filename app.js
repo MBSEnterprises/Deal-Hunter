@@ -77,7 +77,8 @@ function renderWatchlist(){
     if(item.maximum_price!=null) priceBits.push(`<span class="price-pill max">Max ${money(item.maximum_price)}</span>`);
     const counts=listingCounts[item.id]||{all:0,deals:0};
     const searchButton=item.status==="watching"?`<button class="primary compact" onclick="searchItem('${item.id}', this)">Search now</button>`:"";
-    const dealsButton=counts.all?`<button class="ghost compact" onclick="viewDeals('${item.id}')">${counts.deals?`${counts.deals} deal${counts.deals===1?"":"s"}`:`${counts.all} result${counts.all===1?"":"s"}`}</button>`:"";
+    const resultsLabel=counts.all?(counts.deals?`${counts.deals} deal${counts.deals===1?"":"s"}`:`${counts.all} result${counts.all===1?"":"s"}`):"Results";
+    const dealsButton=`<button class="ghost compact" onclick="viewDeals('${item.id}')">${resultsLabel}</button>`;
     return `<article class="item-card"><div><h3>${escapeHtml(item.item_name)}</h3><div class="item-meta">${escapeHtml(subtitle)}${item.condition_preference?` · ${escapeHtml(item.condition_preference)}`:""}${item.urgency?` · ${escapeHtml(prettyUrgency(item.urgency))}`:""}${methods?` · ${escapeHtml(methods)}`:""} · ${escapeHtml(prettyStatus(item.status||"watching"))}</div><div class="price-row">${priceBits.join("")}</div>${item.market_assessment?`<p class="market-note">${escapeHtml(item.market_assessment)}</p>`:""}</div><div class="item-side"><div class="days"><strong>${d??"—"}</strong>days hunting</div><div class="card-actions">${searchButton}${dealsButton}<button class="ghost compact" onclick="editItem('${item.id}')">Edit</button></div></div></article>`;
   }).join("");
 }
@@ -96,7 +97,7 @@ window.searchItem=async(id,button)=>{
   setMessage(appMessage,`Searching for ${item.item_name}…`);
   try{
     const result=await invokeSearch(id);
-    setMessage(appMessage,`Search complete: ${result.new_results} new result${result.new_results===1?"":"s"} found.`,"success");
+    setMessage(appMessage,`Search complete: ${result.found||0} matching listing${result.found===1?"":"s"} found; ${result.new_results||0} new.`,"success");
     await loadWatchlist();
     await viewDeals(id);
   }catch(err){setMessage(appMessage,err.message||String(err),"error");}
@@ -111,26 +112,48 @@ el("searchAllBtn").addEventListener("click",async()=>{
   for(let i=0;i<watching.length;i++){
     btn.textContent=`Searching ${i+1}/${watching.length}`;
     setMessage(appMessage,`Searching for ${watching[i].item_name}…`);
-    try{const result=await invokeSearch(watching[i].id);total+=result.new_results||0;}catch{failures++;}
+    try{const result=await invokeSearch(watching[i].id);total+=result.found||0;}catch{failures++;}
   }
   btn.disabled=false;btn.textContent=old;
   await loadWatchlist();
-  setMessage(appMessage,`Search complete: ${total} new result${total===1?"":"s"}${failures?`; ${failures} search${failures===1?"":"es"} had an error`:""}.`,failures?"":"success");
+  setMessage(appMessage,`Search complete: ${total} matching listing${total===1?"":"s"}${failures?`; ${failures} search${failures===1?"":"es"} had an error`:""}.`,failures?"":"success");
 });
 
 window.viewDeals=async(id)=>{
   const item=items.find(x=>x.id===id); if(!item)return;
   el("dealsTitle").textContent=item.item_name;
-  dealsList.innerHTML="";setMessage(el("dealsMessage"),"Loading results...");dealsDialog.showModal();
-  const {data,error}=await db.from("listings").select("*").eq("watchlist_item_id",id).eq("available",true).order("total_price",{ascending:true,nullsFirst:false}).order("discovered_at",{ascending:false}).limit(60);
-  if(error){setMessage(el("dealsMessage"),error.message,"error");return;}
-  setMessage(el("dealsMessage"),data?.length?`${data.length} current result${data.length===1?"":"s"}`:"No results yet. Run a search.");
-  dealsList.innerHTML=(data||[]).map(row=>{
+  dealsList.innerHTML="";setMessage(el("dealsMessage"),"Loading search details...");dealsDialog.showModal();
+  const [{data:listings,error:listError},{data:runs,error:runError},{data:snapshots,error:snapError}] = await Promise.all([
+    db.from("listings").select("*").eq("watchlist_item_id",id).eq("available",true).order("total_price",{ascending:true,nullsFirst:false}).order("discovered_at",{ascending:false}).limit(60),
+    db.from("search_runs").select("*").eq("watchlist_item_id",id).order("searched_at",{ascending:false}).limit(1),
+    db.from("market_snapshots").select("*").eq("watchlist_item_id",id).order("snapshot_date",{ascending:false}).limit(90)
+  ]);
+  if(listError||runError||snapError){setMessage(el("dealsMessage"),(listError||runError||snapError).message,"error");return;}
+  const latest=runs?.[0]||null;
+  const stats=latest?.source_stats||{};
+  const sources=latest?.sources_searched||Object.keys(stats);
+  const bestSeen=(snapshots||[]).map(x=>x.low_price).filter(x=>x!=null).map(Number).sort((a,b)=>a-b)[0]??null;
+  const currentBest=(listings||[]).map(x=>x.total_price??x.item_price).filter(x=>x!=null).map(Number).sort((a,b)=>a-b)[0]??null;
+  const sourceRows=sources.map(source=>{
+    const s=stats[source]||{};
+    const suffix=s.error?` · error: ${escapeHtml(s.error)}`:"";
+    return `<div class="item-meta"><strong>${escapeHtml(source)}</strong> — ${Number(s.relevant||0)} match${Number(s.relevant||0)===1?"":"es"} from ${Number(s.examined||0)} candidate${Number(s.examined||0)===1?"":"s"}${suffix}</div>`;
+  }).join("");
+  let summary="";
+  if(latest){
+    summary=`<article class="deal-row"><div class="deal-main"><div class="deal-source">LATEST SEARCH</div><h3>Search completed — ${Number(latest.relevant_found||0)} matching listing${Number(latest.relevant_found||0)===1?"":"s"}</h3><p>${Number(latest.candidates_examined||0)} search candidates examined. Legitimate listings are saved; rejected search-engine noise is not stored.</p>${sourceRows}<div class="deal-meta">Searched ${new Date(latest.searched_at).toLocaleString()}</div></div><div class="deal-side"><strong>${currentBest!=null?money(currentBest):"No current match"}</strong><span class="deal-rating">Current best</span>${bestSeen!=null?`<span class="deal-rating">Best seen ${money(bestSeen)}</span>`:""}</div></article>`;
+    setMessage(el("dealsMessage"),(listings||[]).length?`${listings.length} saved matching listing${listings.length===1?"":"s"}`:`Search completed. No matching listings are currently saved.`);
+  }else{
+    summary=`<article class="deal-row"><div class="deal-main"><div class="deal-source">SEARCH HISTORY</div><h3>No search has been run yet</h3><p>Run a search to see source-by-source coverage and market history here.</p></div></article>`;
+    setMessage(el("dealsMessage"),"No search history yet.");
+  }
+  const listingHtml=(listings||[]).map(row=>{
     const price=row.total_price??row.item_price;
     const rating=row.deal_rating||null;
     const cls=rating?` rating-${rating}`:"";
-    return `<article class="deal-row${cls}"><div class="deal-main"><div class="deal-source">${escapeHtml(row.source||"Web")}</div><h3>${escapeHtml(row.title)}</h3>${row.notes?`<p>${escapeHtml(row.notes)}</p>`:""}<div class="deal-meta">Found ${new Date(row.discovered_at||row.created_at).toLocaleString()}</div></div><div class="deal-side"><strong>${money(price)}</strong><span class="deal-rating">${escapeHtml(prettyRating(rating))}</span>${row.listing_url?`<a class="primary compact" href="${escapeHtml(row.listing_url)}" target="_blank" rel="noopener">Open deal</a>`:""}</div></article>`;
+    return `<article class="deal-row${cls}"><div class="deal-main"><div class="deal-source">${escapeHtml(row.source||"Web")}</div><h3>${escapeHtml(row.title)}</h3>${row.notes?`<p>${escapeHtml(row.notes)}</p>`:""}<div class="deal-meta">Found ${new Date(row.discovered_at||row.created_at).toLocaleString()}</div></div><div class="deal-side"><strong>${money(price)}</strong><span class="deal-rating">${escapeHtml(prettyRating(rating))}</span>${row.listing_url?`<a class="primary compact" href="${escapeHtml(row.listing_url)}" target="_blank" rel="noopener">Open listing</a>`:""}</div></article>`;
   }).join("");
+  dealsList.innerHTML=summary+listingHtml;
 };
 el("closeDealsBtn").addEventListener("click",()=>dealsDialog.close());
 
