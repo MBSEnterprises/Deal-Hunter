@@ -9,7 +9,7 @@ function extractPrice(text, productId) {
   const windows = [];
   const idx = productId ? compact.indexOf(productId) : -1;
   if (idx >= 0) windows.push(compact.slice(Math.max(0, idx - 700), idx + 1800));
-  windows.push(compact.slice(0, 30000));
+  windows.push(compact.slice(0, 50000));
   for (const block of windows) {
     const matches = [...block.matchAll(/\$\s*([0-9]{1,4}(?:,[0-9]{3})*(?:\.\d{2})?)/g)]
       .map(m => Number(m[1].replace(/,/g, '')))
@@ -36,7 +36,7 @@ for (const source of sources) {
   const page = await context.newPage();
   try {
     try {
-      await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 35000 });
+      await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: 25000 });
       const body = await readBody(page);
       row.price = extractPrice(body, source.product_id);
       row.method = 'retailer_browser';
@@ -46,18 +46,21 @@ for (const source of sources) {
     }
 
     if (row.price == null) {
+      const q = `"${source.name}" "${source.product_id}"`;
       const queries = [
-        `https://www.bing.com/search?q=${encodeURIComponent(`site:${new URL(source.url).hostname} "${source.product_id}" "${source.name}"`)}`,
-        `https://www.google.com/search?q=${encodeURIComponent(`site:${new URL(source.url).hostname} "${source.product_id}" "${source.name}"`)}`
+        { method: 'bing_search', url: `https://www.bing.com/search?q=${encodeURIComponent(q)}` },
+        { method: 'bing_shopping', url: `https://www.bing.com/shop?q=${encodeURIComponent(source.name)}` },
+        { method: 'google_search', url: `https://www.google.com/search?q=${encodeURIComponent(q)}` },
+        { method: 'google_shopping', url: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(source.name)}` }
       ];
-      for (const searchUrl of queries) {
+      for (const candidate of queries) {
         try {
-          await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await page.goto(candidate.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
           const body = await readBody(page);
           const recovered = extractPrice(body, source.product_id);
           if (recovered != null) {
             row.price = recovered;
-            row.method = searchUrl.includes('bing.com') ? 'bing_browser_fallback' : 'google_browser_fallback';
+            row.method = candidate.method;
             break;
           }
         } catch (_) {}
