@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="description" content="Deal Hunter watchlist and price tracker" />
+  <title>Deal Hunter</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">PERSONAL PRICE TRACKER</div>
+      <h1>Deal Hunter</h1>
+    </div>
+    <button id="signOutBtn" class="ghost hidden">Sign out</button>
+  </header>
+
+  <main class="shell">
+    <section id="loginView" class="card auth-card">
+      <h2>Sign in</h2>
+      <p class="muted">Use the Deal Hunter email and password you created in Supabase.</p>
+
+      <form id="loginForm" class="stack">
+        <label>
+          Email
+          <input id="email" type="email" autocomplete="email" required />
+        </label>
+
+        <label>
+          Password
+          <input id="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <button class="primary" type="submit">Sign in</button>
+        <p id="loginMessage" class="message"></p>
+      </form>
+    </section>
+
+    <section id="appView" class="hidden">
+      <div class="summary-grid">
+        <article class="summary-card">
+          <span class="summary-label">Active searches</span>
+          <strong id="activeCount">0</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Best buy-now target</span>
+          <strong id="bestBuyNow">—</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Oldest search</span>
+          <strong id="oldestSearch">—</strong>
+        </article>
+      </div>
+
+      <div class="toolbar">
+        <div>
+          <h2>Your watchlist</h2>
+          <p class="muted">Items you're actively hunting for.</p>
+        </div>
+        <button id="addItemBtn" class="primary">+ Add item</button>
+      </div>
+
+      <div id="watchlist" class="watchlist"></div>
+      <p id="emptyState" class="empty hidden">No active items yet.</p>
+      <p id="appMessage" class="message"></p>
+    </section>
+  </main>
+
+  <dialog id="itemDialog">
+    <form id="itemForm" method="dialog" class="dialog-card">
+      <div class="dialog-header">
+        <div>
+          <div class="eyebrow">WATCHLIST ITEM</div>
+          <h2 id="dialogTitle">Add item</h2>
+        </div>
+        <button id="closeDialogBtn" type="button" class="icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <input id="itemId" type="hidden" />
+
+      <div class="form-grid">
+        <label class="wide">
+          Item name
+          <input id="itemName" required />
+        </label>
+
+        <label>
+          Brand
+          <input id="brand" />
+        </label>
+
+        <label>
+          Model
+          <input id="model" />
+        </label>
+
+        <label class="wide">
+          Search keywords
+          <textarea id="searchKeywords" rows="3"></textarea>
+        </label>
+
+        <label>
+          Category
+          <input id="category" />
+        </label>
+
+        <label>
+          Condition
+          <select id="conditionPreference">
+            <option value="used">Used</option>
+            <option value="new">New</option>
+            <option value="either">Either</option>
+          </select>
+        </label>
+
+        <label>
+          Buy-now price
+          <input id="buyNowPrice" type="number" min="0" step="0.01" />
+        </label>
+
+        <label>
+          Target price
+          <input id="targetPrice" type="number" min="0" step="0.01" />
+        </label>
+
+        <label>
+          Maximum price
+          <input id="maximumPrice" type="number" min="0" step="0.01" />
+        </label>
+
+        <label>
+          Urgency
+          <select id="urgency">
+            <option value="can_wait">Can wait</option>
+            <option value="normal">Normal</option>
+            <option value="buy_soon">Buy soon</option>
+            <option value="buy_now">Buy now</option>
+          </select>
+        </label>
+
+        <label>
+          Local radius (miles)
+          <input id="localRadius" type="number" min="0" step="1" value="300" />
+        </label>
+
+        <label class="check-label">
+          <input id="shippingRequired" type="checkbox" />
+          Shipping required
+        </label>
+
+        <label class="check-label">
+          <input id="californiaShippingRequired" type="checkbox" />
+          Must ship to California
+        </label>
+
+        <label class="wide">
+          Notes
+          <textarea id="notes" rows="4"></textarea>
+        </label>
+
+        <label>
+          Search started
+          <input id="searchStartedAt" type="date" />
+        </label>
+
+        <label class="check-label">
+          <input id="active" type="checkbox" checked />
+          Active search
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <button id="deleteItemBtn" type="button" class="danger hidden">Delete</button>
+        <div class="spacer"></div>
+        <button id="cancelBtn" type="button" class="ghost">Cancel</button>
+        <button type="submit" class="primary">Save item</button>
+      </div>
+
+      <p id="dialogMessage" class="message"></p>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
