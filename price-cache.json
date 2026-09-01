@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-01T05:16:08.738Z",
+  "generated_at": "2026-09-01T11:44:22.025Z",
   "results": [
     {
       "item_id": "f190fe62-5571-4738-abe2-b7af59e99f9e",
@@ -7,8 +7,8 @@
       "source": "Tractor Supply",
       "url": "https://www.tractorsupply.com/tsc/product/smv-industries-silver-and-red-8-ft-windmill-48a-4451562",
       "product_id": "4451562",
-      "checked_at": "2026-09-01T05:15:18.445Z",
-      "price": 70,
+      "checked_at": "2026-09-01T11:43:31.480Z",
+      "price": 60,
       "status": "ok",
       "method": "bing_shopping",
       "direct_error": "page.goto: Timeout 20000ms exceeded.\nCall log:\n  - navigating to \"https://www.tractorsupply.com/tsc/product/smv-industries-silver-and-red-8-ft-windmill-48a-4451562\", waiting until \"domcontentloaded\"\n"
